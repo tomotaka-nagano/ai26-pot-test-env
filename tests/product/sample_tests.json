@@ -1,0 +1,605 @@
+{
+  "scenarios": [
+    {
+      "name": "故障テスト: ヒータ断線 → 温度上がらずエラー",
+      "description": "沸騰中にヒータ断線故障を注入し、温度が上がらないことによるエラー検知を確認する",
+      "speed": 20,
+      "timeout": 600,
+      "setup": {
+        "water_ml": 600,
+        "water_temperature": 25.0,
+        "lid_closed": false
+      },
+      "steps": [
+        {
+          "description": "蓋を閉じて沸騰開始",
+          "trigger": {
+            "type": "time",
+            "seconds": 0
+          },
+          "actions": [
+            {
+              "type": "lid_close"
+            }
+          ],
+          "assertions": [
+            {
+              "field": "state",
+              "op": "==",
+              "expected": "boiling"
+            }
+          ]
+        },
+        {
+          "description": "温度がある程度上がるのを待つ",
+          "trigger": {
+            "type": "wait",
+            "condition": {
+              "field": "temperature",
+              "op": ">=",
+              "value": 40.0
+            }
+          },
+          "actions": [],
+          "assertions": [
+            {
+              "field": "state",
+              "op": "==",
+              "expected": "boiling"
+            }
+          ]
+        },
+        {
+          "description": "ヒータ断線を注入 → 加熱不能にする",
+          "trigger": {
+            "type": "time",
+            "seconds": 0
+          },
+          "actions": [
+            {
+              "type": "inject_fault",
+              "target": "heater",
+              "mode": "open"
+            }
+          ],
+          "assertions": []
+        },
+        {
+          "description": "エラー状態に遷移するのを待つ",
+          "trigger": {
+            "type": "wait",
+            "condition": {
+              "field": "state",
+              "op": "==",
+              "value": "error"
+            }
+          },
+          "actions": [],
+          "assertions": [
+            {
+              "field": "state",
+              "op": "==",
+              "expected": "error"
+            },
+            {
+              "field": "error",
+              "op": "==",
+              "expected": true
+            },
+            {
+              "field": "temp_not_rising_error",
+              "op": "==",
+              "expected": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S-1.1: 温度制御可能水位で蓋を閉じる → 沸騰開始",
+      "description": "水を600ml注ぎ、蓋を閉じると沸騰が開始されることを確認する",
+      "speed": 5,
+      "timeout": 30,
+      "setup": {
+        "water_ml": 0,
+        "water_temperature": 25.0,
+        "lid_closed": false
+      },
+      "steps": [
+        {
+          "description": "水を600ml注ぐ",
+          "trigger": {
+            "type": "time",
+            "seconds": 0
+          },
+          "actions": [
+            {
+              "type": "add_water",
+              "value": 600
+            }
+          ],
+          "assertions": [
+            {
+              "field": "water_volume_ml",
+              "op": ">=",
+              "expected": 600
+            },
+            {
+              "field": "state",
+              "op": "==",
+              "expected": "idle"
+            }
+          ]
+        },
+        {
+          "description": "蓋を閉じる → 沸騰開始を確認",
+          "trigger": {
+            "type": "time",
+            "seconds": 1
+          },
+          "actions": [
+            {
+              "type": "lid_close"
+            }
+          ],
+          "assertions": [
+            {
+              "field": "state",
+              "op": "==",
+              "expected": "boiling"
+            },
+            {
+              "field": "boiling_lamp",
+              "op": "==",
+              "expected": true
+            },
+            {
+              "field": "keep_warm_lamp",
+              "op": "==",
+              "expected": false
+            },
+            {
+              "field": "heater_on",
+              "op": "==",
+              "expected": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S-1.2: 水量不足で蓋を閉じる → 沸騰開始しない",
+      "description": "水を注がず蓋を閉じても、状態がIDLEのまま変化しないことを確認する",
+      "speed": 5,
+      "timeout": 30,
+      "setup": {
+        "water_ml": 0,
+        "water_temperature": 25.0,
+        "lid_closed": false
+      },
+      "steps": [
+        {
+          "description": "水を注がず蓋を閉じる",
+          "trigger": {
+            "type": "time",
+            "seconds": 0
+          },
+          "actions": [
+            {
+              "type": "lid_close"
+            }
+          ],
+          "assertions": [
+            {
+              "field": "state",
+              "op": "==",
+              "expected": "idle"
+            },
+            {
+              "field": "boiling_lamp",
+              "op": "==",
+              "expected": false
+            },
+            {
+              "field": "heater_on",
+              "op": "==",
+              "expected": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S-1.4: 沸騰中に蓋を開ける → ヒータ停止",
+      "description": "沸騰中に蓋を開けると、ヒータが停止しIDLEに遷移することを確認する",
+      "speed": 5,
+      "timeout": 30,
+      "setup": {
+        "water_ml": 600,
+        "water_temperature": 25.0,
+        "lid_closed": false
+      },
+      "steps": [
+        {
+          "description": "蓋を閉じて沸騰開始",
+          "trigger": {
+            "type": "time",
+            "seconds": 0
+          },
+          "actions": [
+            {
+              "type": "lid_close"
+            }
+          ],
+          "assertions": [
+            {
+              "field": "state",
+              "op": "==",
+              "expected": "boiling"
+            },
+            {
+              "field": "heater_on",
+              "op": "==",
+              "expected": true
+            }
+          ]
+        },
+        {
+          "description": "沸騰中に蓋を開ける → ヒータ停止・IDLE",
+          "trigger": {
+            "type": "time",
+            "seconds": 5
+          },
+          "actions": [
+            {
+              "type": "lid_open"
+            }
+          ],
+          "assertions": [
+            {
+              "field": "state",
+              "op": "==",
+              "expected": "idle"
+            },
+            {
+              "field": "heater_on",
+              "op": "==",
+              "expected": false
+            },
+            {
+              "field": "boiling_lamp",
+              "op": "==",
+              "expected": false
+            },
+            {
+              "field": "keep_warm_lamp",
+              "op": "==",
+              "expected": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S-2.1: 沸騰 → 100℃到達後3分間加熱 → 保温に移行",
+      "description": "沸騰開始から100℃到達後3分経過で保温に遷移することを確認する",
+      "speed": 20,
+      "timeout": 900,
+      "setup": {
+        "water_ml": 600,
+        "water_temperature": 25.0,
+        "lid_closed": false
+      },
+      "steps": [
+        {
+          "description": "蓋を閉じて沸騰開始",
+          "trigger": {
+            "type": "time",
+            "seconds": 0
+          },
+          "actions": [
+            {
+              "type": "lid_close"
+            }
+          ],
+          "assertions": [
+            {
+              "field": "state",
+              "op": "==",
+              "expected": "boiling"
+            }
+          ]
+        },
+        {
+          "description": "100℃到達を待つ",
+          "trigger": {
+            "type": "wait",
+            "condition": {
+              "field": "temperature",
+              "op": ">=",
+              "value": 99.5
+            }
+          },
+          "actions": [],
+          "assertions": [
+            {
+              "field": "state",
+              "op": "==",
+              "expected": "boiling"
+            },
+            {
+              "field": "heater_on",
+              "op": "==",
+              "expected": true
+            }
+          ]
+        },
+        {
+          "description": "保温に移行するのを待つ（カルキ抜き3分後）",
+          "trigger": {
+            "type": "wait",
+            "condition": {
+              "field": "state",
+              "op": "==",
+              "value": "keep_warm"
+            }
+          },
+          "actions": [],
+          "assertions": [
+            {
+              "field": "state",
+              "op": "==",
+              "expected": "keep_warm"
+            },
+            {
+              "field": "boiling_lamp",
+              "op": "==",
+              "expected": false
+            },
+            {
+              "field": "keep_warm_lamp",
+              "op": "==",
+              "expected": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S-3.2: 保温モード切り替え（高温→節約→ミルク→高温）",
+      "description": "保温設定ボタンで保温モードが順に切り替わることを確認する",
+      "speed": 20,
+      "timeout": 900,
+      "setup": {
+        "water_ml": 600,
+        "water_temperature": 25.0,
+        "lid_closed": false
+      },
+      "steps": [
+        {
+          "description": "蓋を閉じて沸騰開始",
+          "trigger": {
+            "type": "time",
+            "seconds": 0
+          },
+          "actions": [
+            {
+              "type": "lid_close"
+            }
+          ],
+          "assertions": [
+            {
+              "field": "state",
+              "op": "==",
+              "expected": "boiling"
+            }
+          ]
+        },
+        {
+          "description": "保温に移行するのを待つ",
+          "trigger": {
+            "type": "wait",
+            "condition": {
+              "field": "state",
+              "op": "==",
+              "value": "keep_warm"
+            }
+          },
+          "actions": [],
+          "assertions": [
+            {
+              "field": "keep_warm_mode",
+              "op": "==",
+              "expected": "high"
+            }
+          ]
+        },
+        {
+          "description": "保温設定ボタン1回 → 節約モード",
+          "trigger": {
+            "type": "time",
+            "seconds": 0
+          },
+          "actions": [
+            {
+              "type": "keep_warm"
+            }
+          ],
+          "assertions": [
+            {
+              "field": "keep_warm_mode",
+              "op": "==",
+              "expected": "economy"
+            }
+          ]
+        },
+        {
+          "description": "保温設定ボタン2回目 → ミルクモード",
+          "trigger": {
+            "type": "time",
+            "seconds": 1
+          },
+          "actions": [
+            {
+              "type": "keep_warm"
+            }
+          ],
+          "assertions": [
+            {
+              "field": "keep_warm_mode",
+              "op": "==",
+              "expected": "milk"
+            }
+          ]
+        },
+        {
+          "description": "保温設定ボタン3回目 → 高温モードに戻る",
+          "trigger": {
+            "type": "time",
+            "seconds": 2
+          },
+          "actions": [
+            {
+              "type": "keep_warm"
+            }
+          ],
+          "assertions": [
+            {
+              "field": "keep_warm_mode",
+              "op": "==",
+              "expected": "high"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S-4.2: ロック解除して給湯 → 水が排出される",
+      "description": "保温中にロック解除して給湯ボタンを押すと、ポンプONで水が排出されることを確認する",
+      "speed": 20,
+      "timeout": 900,
+      "setup": {
+        "water_ml": 600,
+        "water_temperature": 25.0,
+        "lid_closed": false
+      },
+      "steps": [
+        {
+          "description": "蓋を閉じて沸騰開始",
+          "trigger": {
+            "type": "time",
+            "seconds": 0
+          },
+          "actions": [
+            {
+              "type": "lid_close"
+            }
+          ],
+          "assertions": [
+            {
+              "field": "state",
+              "op": "==",
+              "expected": "boiling"
+            }
+          ]
+        },
+        {
+          "description": "保温に移行するのを待つ",
+          "trigger": {
+            "type": "wait",
+            "condition": {
+              "field": "state",
+              "op": "==",
+              "value": "keep_warm"
+            }
+          },
+          "actions": [],
+          "assertions": [
+            {
+              "field": "state",
+              "op": "==",
+              "expected": "keep_warm"
+            }
+          ]
+        },
+        {
+          "description": "ロック解除する",
+          "trigger": {
+            "type": "time",
+            "seconds": 0
+          },
+          "actions": [
+            {
+              "type": "unlock"
+            }
+          ],
+          "assertions": [
+            {
+              "field": "locked",
+              "op": "==",
+              "expected": false
+            },
+            {
+              "field": "lock_lamp",
+              "op": "==",
+              "expected": false
+            }
+          ]
+        },
+        {
+          "description": "給湯ボタンを押す → ポンプON",
+          "trigger": {
+            "type": "time",
+            "seconds": 1
+          },
+          "actions": [
+            {
+              "type": "dispense_press"
+            }
+          ],
+          "assertions": [
+            {
+              "field": "pump_on",
+              "op": "==",
+              "expected": true
+            },
+            {
+              "field": "dispensing",
+              "op": "==",
+              "expected": true
+            }
+          ]
+        },
+        {
+          "description": "5秒間給湯後に離す → ポンプOFF、水量が減少",
+          "trigger": {
+            "type": "time",
+            "seconds": 6
+          },
+          "actions": [
+            {
+              "type": "dispense_release"
+            }
+          ],
+          "assertions": [
+            {
+              "field": "pump_on",
+              "op": "==",
+              "expected": false
+            },
+            {
+              "field": "dispensing",
+              "op": "==",
+              "expected": false
+            },
+            {
+              "field": "water_volume_ml",
+              "op": "<",
+              "expected": 600
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

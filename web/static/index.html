@@ -1,0 +1,1807 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>話題沸騰ポット GOMA-1015型 シミュレーター</title>
+<style>
+  :root {
+    --bg: #f5f5f5;
+    --panel: #ffffff;
+    --card: #e8eaf6;
+    --accent: #d32f2f;
+    --warm: #e65100;
+    --water: #0288d1;
+    --water-dark: #01579b;
+    --green: #2e7d32;
+    --text: #212121;
+    --text-dim: #757575;
+    --lamp-off: #ccc;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Meiryo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  header {
+    text-align: center;
+    padding: 16px;
+    width: 100%;
+    background: var(--panel);
+    border-bottom: 2px solid var(--accent);
+  }
+  header h1 { font-size: 1.4rem; letter-spacing: 0.05em; }
+  header .sub { font-size: 0.85rem; color: var(--text-dim); margin-top: 4px; }
+
+  .main-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr 380px;
+    gap: 16px;
+    max-width: 1500px;
+    width: 100%;
+    padding: 16px;
+    flex: 1;
+  }
+  @media (max-width: 1100px) {
+    .main-layout { grid-template-columns: 300px 1fr; }
+  }
+  @media (max-width: 768px) {
+    .main-layout { grid-template-columns: 1fr; }
+  }
+
+  /* ===== 左パネル: ポット可視化 ===== */
+  .pot-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .card {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #ddd;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .card h3 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+
+  /* 温度表示 */
+  .temp-display {
+    text-align: center;
+    position: relative;
+  }
+  .temp-value {
+    font-size: 4rem;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .temp-unit { font-size: 1.5rem; color: var(--text-dim); }
+  .temp-target {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+  .temp-dual {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 4px;
+  }
+  .temp-sub {
+    text-align: center;
+  }
+  .temp-sub-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+  }
+  .temp-sub-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .temp-sub-value.plant-color { color: #0277bd; }
+  .temp-sub-value.app-color { color: #6a1b9a; }
+  .temp-sub-unit {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+
+  /* ポット図 */
+  .pot-visual {
+    position: relative;
+    width: 220px;
+    height: 280px;
+    margin: 0 auto;
+  }
+  .pot-body {
+    position: absolute;
+    bottom: 0;
+    left: 30px;
+    width: 160px;
+    height: 200px;
+    border: 3px solid #999;
+    border-radius: 0 0 20px 20px;
+    background: #e0e0e0;
+    overflow: hidden;
+  }
+  .pot-water {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    transition: height 0.5s ease;
+  }
+  .pot-lid {
+    position: absolute;
+    top: 40px;
+    left: 20px;
+    width: 180px;
+    height: 32px;
+    background: #9e9e9e;
+    border-radius: 10px 10px 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: #fff;
+    transition: transform 0.3s ease, background 0.3s ease;
+    cursor: pointer;
+  }
+  .pot-lid.open {
+    transform: rotate(-30deg) translateY(-20px);
+    transform-origin: left center;
+    background: #bdbdbd;
+  }
+  /* 水位マーク */
+  .water-marks {
+    position: absolute;
+    right: -18px;
+    bottom: 0;
+    height: 200px;
+  }
+  .water-mark {
+    position: absolute;
+    right: 0;
+    width: 14px;
+    height: 2px;
+    background: #999;
+  }
+  .water-mark span {
+    position: absolute;
+    right: 18px;
+    top: -6px;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  /* ヒーターインジケータ */
+  .heater-bar {
+    position: absolute;
+    bottom: 0;
+    left: 30px;
+    width: 160px;
+    height: 6px;
+    background: var(--lamp-off);
+    border-radius: 0 0 20px 20px;
+    transition: background 0.3s;
+  }
+  .heater-bar.active {
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+    animation: heater-pulse 0.8s ease-in-out infinite alternate;
+  }
+  @keyframes heater-pulse {
+    from { opacity: 0.7; }
+    to { opacity: 1; }
+  }
+
+  /* ランプ */
+  .lamps {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .lamp {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .lamp-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--lamp-off);
+    border: 2px solid #bbb;
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  .lamp-dot.on-red {
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+  }
+  .lamp-dot.on-orange {
+    background: var(--warm);
+    box-shadow: 0 0 10px var(--warm);
+  }
+  .lamp-dot.on-green {
+    background: var(--green);
+    box-shadow: 0 0 10px var(--green);
+  }
+  .lamp-dot.on-blue {
+    background: var(--water);
+    box-shadow: 0 0 10px var(--water);
+  }
+  .lamp-label { font-size: 0.7rem; color: var(--text-dim); }
+
+  /* 水量表示 */
+  .water-volume-display {
+    font-size: 1.1rem;
+    margin-top: 6px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .water-volume-display span {
+    color: var(--water);
+    font-weight: 600;
+  }
+
+  /* ===== 右パネル: 操作・チャート ===== */
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* 操作ボタン */
+  .controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+  }
+  .btn {
+    padding: 10px 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.2s, background 0.2s;
+    color: white;
+    text-align: center;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-boil  { background: #c62828; }
+  .btn-boil:hover:not(:disabled) { background: #e53935; }
+  .btn-warm  { background: #e65100; }
+  .btn-warm:hover:not(:disabled)  { background: #ff6d00; }
+  .btn-timer { background: #1565c0; }
+  .btn-timer:hover:not(:disabled) { background: #1976d2; }
+  .btn-lock  { background: #2e7d32; }
+  .btn-lock:hover:not(:disabled)  { background: #388e3c; }
+  .btn-pour  { background: #00838f; }
+  .btn-pour:hover:not(:disabled)  { background: #0097a7; }
+  .btn-lid   { background: #5e35b1; }
+  .btn-lid:hover:not(:disabled)   { background: #7e57c2; }
+  .btn-water { background: #0277bd; }
+  .btn-water:hover:not(:disabled) { background: #0288d1; }
+
+  /* シミュレーション制御 */
+  .sim-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .btn-sim {
+    padding: 8px 16px;
+    border: 2px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-sim:hover { background: var(--accent); color: white; }
+  .btn-sim.active { background: var(--accent); color: white; }
+  .speed-select {
+    padding: 8px 12px;
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 0.85rem;
+  }
+  .sim-time {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+  }
+
+  /* 注水入力 */
+  .water-input {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .water-input input {
+    width: 80px;
+    padding: 6px 8px;
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    text-align: right;
+  }
+  .water-input span { font-size: 0.8rem; color: var(--text-dim); }
+
+  /* 温度チャート */
+  .chart-container {
+    position: relative;
+    width: 100%;
+    height: 250px;
+    background: #fafafa;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    overflow: hidden;
+  }
+  .chart-canvas {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ステータスバー */
+  .status-bar {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+  }
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--lamp-off);
+  }
+  .status-dot.on { background: var(--green); }
+  .status-dot.error { background: var(--accent); }
+
+  /* 状態ラベル */
+  .state-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .state-idle { background: #90a4ae; color: #fff; }
+  .state-boiling { background: #e53935; color: #fff; }
+  .state-keep_warm { background: #ff6d00; color: #fff; }
+  .state-error { background: #c62828; color: #fff; animation: blink 0.5s alternate infinite; }
+  @keyframes blink { to { opacity: 0.4; } }
+
+  /* ブザー点滅 */
+  .buzzer-icon { margin-left: 8px; display: none; }
+  .buzzer-icon.active { display: inline; animation: blink 0.3s alternate infinite; }
+
+  /* 情報テーブル */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 16px;
+    font-size: 0.8rem;
+  }
+  .info-label { color: var(--text-dim); }
+  .info-value { text-align: right; font-variant-numeric: tabular-nums; }
+
+  footer {
+    padding: 12px;
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+
+  /* ===== 故障注入パネル ===== */
+  .fault-panel { }
+  .fault-grid {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 6px 10px;
+    align-items: center;
+    font-size: 0.8rem;
+  }
+  .fault-label {
+    color: var(--text-dim);
+    text-align: right;
+    white-space: nowrap;
+  }
+  .fault-select {
+    padding: 5px 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    background: var(--card);
+    color: var(--text);
+    width: 100%;
+  }
+  .fault-select.fault-active {
+    border-color: #e53935;
+    background: #ffebee;
+    color: #c62828;
+    font-weight: 600;
+  }
+  .fault-category {
+    grid-column: 1 / -1;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    border-bottom: 1px solid #e0e0e0;
+    padding: 6px 0 2px 0;
+    margin-top: 4px;
+  }
+  .fault-category:first-child { margin-top: 0; }
+  .btn-clear-faults {
+    margin-top: 10px;
+    padding: 8px 16px;
+    border: 2px solid #e53935;
+    background: transparent;
+    color: #e53935;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.2s;
+  }
+  .btn-clear-faults:hover { background: #e53935; color: white; }
+  .fault-active-count {
+    font-size: 0.75rem;
+    color: #e53935;
+    font-weight: 600;
+    margin-top: 4px;
+    text-align: center;
+    min-height: 1.2em;
+  }
+
+  /* ===== プラント vs アプリ比較テーブル ===== */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .compare-table th {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    padding: 4px 6px;
+    border-bottom: 2px solid #ddd;
+    text-align: center;
+  }
+  .compare-table th:first-child { text-align: right; }
+  .compare-table td { padding: 3px 6px; border-bottom: 1px solid #f0f0f0; }
+  .cmp-label {
+    text-align: right;
+    color: var(--text-dim);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .cmp-plant {
+    text-align: center;
+    color: #0277bd;
+    font-weight: 600;
+  }
+  .cmp-app {
+    text-align: center;
+    color: #6a1b9a;
+    font-weight: 600;
+  }
+  .cmp-diff {
+    text-align: center;
+    font-size: 0.7rem;
+    min-width: 20px;
+  }
+  .cmp-diff.mismatch {
+    color: #e53935;
+    font-weight: 700;
+  }
+  .cmp-legend {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #e0e0e0;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+  }
+
+  /* ===== 自動テストパネル ===== */
+  .test-panel { position: relative; }
+  .test-panel h3 { cursor: pointer; user-select: none; }
+  .test-controls {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .test-controls select {
+    flex: 1;
+    min-width: 140px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 0.8rem;
+  }
+  .btn-test {
+    padding: 4px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+  .btn-test-run { background: #2e7d32; color: #fff; }
+  .btn-test-run:hover { background: #1b5e20; }
+  .btn-test-run:disabled { background: #a5d6a7; cursor: not-allowed; }
+  .btn-test-stop { background: #c62828; color: #fff; }
+  .btn-test-stop:hover { background: #b71c1c; }
+  .btn-test-load { background: #1565c0; color: #fff; }
+  .btn-test-load:hover { background: #0d47a1; }
+  .btn-test-toggle {
+    background: #546e7a;
+    color: #fff;
+    font-size: 0.72rem;
+    padding: 3px 8px;
+  }
+  .btn-test-toggle:hover { background: #37474f; }
+
+  .test-custom-area {
+    display: none;
+    margin-bottom: 8px;
+  }
+  .test-custom-area.open { display: block; }
+  .test-custom-area textarea {
+    width: 100%;
+    min-height: 120px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 8px;
+    resize: vertical;
+  }
+
+  .test-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 0.82rem;
+  }
+  .test-status-badge {
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .test-status-badge.running { background: #fff3e0; color: #e65100; }
+  .test-status-badge.passed  { background: #e8f5e9; color: #2e7d32; }
+  .test-status-badge.failed  { background: #ffebee; color: #c62828; }
+  .test-status-badge.stopped { background: #eceff1; color: #546e7a; }
+  .test-status-badge.timeout { background: #fff8e1; color: #f57f17; }
+  .test-status-badge.idle    { background: #eceff1; color: #90a4ae; }
+  .test-status-badge.loaded  { background: #e3f2fd; color: #1565c0; }
+
+  .test-results { max-height: 400px; overflow-y: auto; }
+  .test-step {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    overflow: hidden;
+  }
+  .test-step-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: #fafafa;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .test-step-header:hover { background: #f0f0f0; }
+  .test-step-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .test-step-icon.passed  { background: #2e7d32; }
+  .test-step-icon.failed  { background: #c62828; }
+  .test-step-icon.pending { background: #bdbdbd; }
+  .test-step-icon.waiting { background: #f57c00; }
+  .test-step-icon.skipped { background: #78909c; }
+  .test-step-desc { flex: 1; }
+  .test-step-time { font-size: 0.7rem; color: var(--text-dim); }
+
+  .test-step-details {
+    display: none;
+    padding: 6px 10px 8px 36px;
+    border-top: 1px solid #eee;
+    font-size: 0.75rem;
+  }
+  .test-step.expanded .test-step-details { display: block; }
+  .test-assertion {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+    padding: 2px 0;
+  }
+  .test-assertion-icon { font-size: 0.75rem; }
+  .test-assertion-icon.pass { color: #2e7d32; }
+  .test-assertion-icon.fail { color: #c62828; }
+  .test-assertion-detail {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.72rem;
+    color: #555;
+  }
+  .test-assertion-msg {
+    color: #c62828;
+    font-size: 0.72rem;
+  }
+
+  .test-scenario-name {
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+  }
+  .test-scenario-desc {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  /* ===== 右パネル: テスト列 ===== */
+  .test-column {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* テストケース一覧 */
+  .suite-list {
+    max-height: 280px;
+    overflow-y: auto;
+    margin-bottom: 8px;
+  }
+  .suite-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    transition: background 0.1s;
+  }
+  .suite-item:hover { background: #f5f5f5; }
+  .suite-item.active { background: #e3f2fd; border-color: #1565c0; }
+  .suite-item-index {
+    min-width: 20px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.72rem;
+  }
+  .suite-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .suite-item-badge {
+    padding: 1px 8px;
+    border-radius: 8px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .suite-item-badge.pending { background: #eceff1; color: #90a4ae; }
+  .suite-item-badge.running { background: #fff3e0; color: #e65100; }
+  .suite-item-badge.passed  { background: #e8f5e9; color: #2e7d32; }
+  .suite-item-badge.failed  { background: #ffebee; color: #c62828; }
+
+  .suite-controls {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .suite-status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 0.8rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🍵 話題沸騰ポット GOMA-1015型</h1>
+  <div class="sub">リアルタイム シミュレーター</div>
+</header>
+
+<div class="main-layout">
+  <!-- ===== 左パネル ===== -->
+  <div class="pot-panel">
+    <!-- 温度 -->
+    <div class="card temp-display">
+      <div>
+        <span class="temp-value" id="tempValue">25.0</span><span class="temp-unit">℃</span>
+      </div>
+      <div class="temp-dual">
+        <div class="temp-sub">
+          <div class="temp-sub-label">認識温度</div>
+          <span class="temp-sub-value app-color" id="tempApp">25.0</span><span class="temp-sub-unit">℃</span>
+        </div>
+      </div>
+      <div class="temp-target">目標: <span id="targetTemp">98</span>℃</div>
+      <span class="state-badge state-idle" id="stateBadge">IDLE</span>
+      <span class="buzzer-icon" id="buzzerIcon">🔔</span>
+      <div class="water-volume-display">水量: <span id="waterVolume">0</span> ml</div>
+    </div>
+
+    <!-- ポット図 -->
+    <div class="card">
+      <h3>ポット</h3>
+      <div class="pot-visual">
+        <div class="pot-lid" id="potLid" title="クリックで蓋開閉">蓋 (閉)</div>
+        <div class="pot-body">
+          <div class="pot-water" id="potWater"></div>
+        </div>
+        <div class="heater-bar" id="heaterBar"></div>
+        <div class="water-marks">
+          <div class="water-mark" style="bottom: 40px"><span>200</span></div>
+          <div class="water-mark" style="bottom: 80px"><span>400</span></div>
+          <div class="water-mark" style="bottom: 120px"><span>600</span></div>
+          <div class="water-mark" style="bottom: 160px"><span>800</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ランプ -->
+    <div class="card">
+      <h3>インジケータ</h3>
+      <div class="lamps">
+        <div class="lamp">
+          <div class="lamp-dot" id="lampBoil"></div>
+          <div class="lamp-label">沸騰</div>
+        </div>
+        <div class="lamp">
+          <div class="lamp-dot" id="lampWarm"></div>
+          <div class="lamp-label">保温</div>
+        </div>
+        <div class="lamp">
+          <div class="lamp-dot" id="lampLock"></div>
+          <div class="lamp-label">ロック</div>
+        </div>
+        <div class="lamp">
+          <div class="lamp-dot" id="lampPower"></div>
+          <div class="lamp-label">電源</div>
+        </div>
+        <div class="lamp">
+          <div class="lamp-dot" id="lampPump"></div>
+          <div class="lamp-label">ポンプ</div>
+        </div>
+      </div>
+    </div>
+
+
+  </div>
+
+  <!-- ===== 右パネル ===== -->
+  <div class="right-panel">
+    <!-- シミュレーション制御 -->
+    <div class="card">
+      <h3>シミュレーション制御</h3>
+      <div class="sim-controls">
+        <button class="btn-sim" id="btnStart" onclick="send('start')">▶ 開始</button>
+        <button class="btn-sim" id="btnStop" onclick="send('stop')">⏸ 停止</button>
+        <button class="btn-sim" onclick="send('step')">⏭ 1ステップ</button>
+        <button class="btn-sim" onclick="send('reset')">↺ リセット</button>
+        <select class="speed-select" id="speedSelect" onchange="setSpeed(this.value)">
+          <option value="1">1x</option>
+          <option value="2">2x</option>
+          <option value="5" selected>5x</option>
+          <option value="10">10x</option>
+          <option value="20">20x</option>
+        </select>
+        <div class="sim-time" id="simTime">経過: 0:00</div>
+      </div>
+    </div>
+
+    <!-- 操作パネル -->
+    <div class="card">
+      <h3>操作パネル</h3>
+      <div class="controls-grid">
+        <button class="btn btn-boil" onclick="send('boil')">🔥 沸騰</button>
+        <button class="btn btn-warm" onclick="send('keep_warm')">♨ 保温設定</button>
+        <button class="btn btn-timer" onclick="send('timer')">⏱ タイマ +1分</button>
+        <button class="btn btn-lock" id="btnLock" onclick="send('unlock')">🔓 ロック解除</button>
+        <button class="btn btn-pour" id="btnDispense"
+          onmousedown="send('dispense_press')"
+          onmouseup="send('dispense_release')"
+          onmouseleave="send('dispense_release')">
+          🚰 給湯
+        </button>
+        <button class="btn btn-lid" id="btnLid" onclick="toggleLid()">蓋 開閉</button>
+      </div>
+      <div style="margin-top: 10px;">
+        <div class="water-input">
+          <span>注水:</span>
+          <input type="number" id="waterAmount" value="600" min="50" max="1000" step="50">
+          <span>ml</span>
+          <button class="btn btn-water" onclick="addWater()">💧 注水</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 温度チャート -->
+    <div class="card" style="flex:1;">
+      <h3>温度推移グラフ</h3>
+      <div class="chart-container">
+        <canvas class="chart-canvas" id="tempChart"></canvas>
+      </div>
+    </div>
+
+    <!-- 故障注入パネル -->
+    <div class="card fault-panel">
+      <h3>⚡ 故障注入</h3>
+      <div class="fault-grid">
+        <div class="fault-category">センサ</div>
+
+        <span class="fault-label">サーミスタ</span>
+        <select class="fault-select" id="fault_thermistor" onchange="injectFault('thermistor', this.value)">
+          <option value="normal">正常</option>
+          <option value="open">断線 (Vcc固定)</option>
+          <option value="short">短絡 (0V固定)</option>
+        </select>
+
+        <span class="fault-label">水位センサ 1</span>
+        <select class="fault-select" id="fault_water_level_1" onchange="injectFault('water_level_1', this.value)">
+          <option value="normal">正常</option>
+          <option value="open">断線 (OFF固定)</option>
+          <option value="short">短絡 (ON固定)</option>
+        </select>
+
+        <span class="fault-label">水位センサ 2</span>
+        <select class="fault-select" id="fault_water_level_2" onchange="injectFault('water_level_2', this.value)">
+          <option value="normal">正常</option>
+          <option value="open">断線 (OFF固定)</option>
+          <option value="short">短絡 (ON固定)</option>
+        </select>
+
+        <span class="fault-label">水位センサ 3</span>
+        <select class="fault-select" id="fault_water_level_3" onchange="injectFault('water_level_3', this.value)">
+          <option value="normal">正常</option>
+          <option value="open">断線 (OFF固定)</option>
+          <option value="short">短絡 (ON固定)</option>
+        </select>
+
+        <span class="fault-label">水位センサ 4</span>
+        <select class="fault-select" id="fault_water_level_4" onchange="injectFault('water_level_4', this.value)">
+          <option value="normal">正常</option>
+          <option value="open">断線 (OFF固定)</option>
+          <option value="short">短絡 (ON固定)</option>
+        </select>
+
+        <span class="fault-label">満水センサ</span>
+        <select class="fault-select" id="fault_full_water" onchange="injectFault('full_water', this.value)">
+          <option value="normal">正常</option>
+          <option value="open">断線 (OFF固定)</option>
+          <option value="short">短絡 (ON固定)</option>
+        </select>
+
+        <span class="fault-label">蓋センサ</span>
+        <select class="fault-select" id="fault_lid_sensor" onchange="injectFault('lid_sensor', this.value)">
+          <option value="normal">正常</option>
+          <option value="open">断線 (開固定)</option>
+          <option value="short">短絡 (閉固定)</option>
+        </select>
+
+        <div class="fault-category">アクチュエータ</div>
+
+        <span class="fault-label">ヒータ</span>
+        <select class="fault-select" id="fault_heater" onchange="injectFault('heater', this.value)">
+          <option value="normal">正常</option>
+          <option value="open">断線 (加熱不能)</option>
+          <option value="short_on">固着ON (常時加熱)</option>
+        </select>
+
+        <span class="fault-label">ポンプ</span>
+        <select class="fault-select" id="fault_pump" onchange="injectFault('pump', this.value)">
+          <option value="normal">正常</option>
+          <option value="open">断線 (排水不能)</option>
+          <option value="short_on">固着ON (常時排水)</option>
+        </select>
+
+        <div class="fault-category">デバイス</div>
+
+        <span class="fault-label">ヒータ用電源</span>
+        <select class="fault-select" id="fault_power_supply" onchange="injectFault('power_supply', this.value)">
+          <option value="normal">正常</option>
+          <option value="stuck_on">固着ON (遮断不能)</option>
+          <option value="stuck_off">固着OFF (常時遮断)</option>
+        </select>
+      </div>
+      <div class="fault-active-count" id="faultActiveCount"></div>
+      <button class="btn-clear-faults" onclick="clearAllFaults()">全故障クリア</button>
+    </div>
+
+    <!-- プラント実値 vs アプリ認識値 -->
+    <div class="card">
+      <h3>🔍 プラント実値 vs アプリ認識値</h3>
+      <table class="compare-table">
+        <thead>
+          <tr><th></th><th>プラント実値</th><th>アプリ認識値</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="cmp-label">水温</td>
+            <td class="cmp-plant" id="cmpPlantTemp">25.0℃</td>
+            <td class="cmp-app" id="cmpAppTemp">25.0℃</td>
+            <td class="cmp-diff" id="cmpDiffTemp"></td>
+          </tr>
+          <tr>
+            <td class="cmp-label">水量</td>
+            <td class="cmp-plant" id="cmpPlantVol">0 ml</td>
+            <td class="cmp-app" colspan="2" style="color:var(--text-dim);">—</td>
+          </tr>
+          <tr>
+            <td class="cmp-label">水位 1</td>
+            <td class="cmp-plant" id="cmpPlantWL1">OFF</td>
+            <td class="cmp-app" id="cmpAppWL1">OFF</td>
+            <td class="cmp-diff" id="cmpDiffWL1"></td>
+          </tr>
+          <tr>
+            <td class="cmp-label">水位 2</td>
+            <td class="cmp-plant" id="cmpPlantWL2">OFF</td>
+            <td class="cmp-app" id="cmpAppWL2">OFF</td>
+            <td class="cmp-diff" id="cmpDiffWL2"></td>
+          </tr>
+          <tr>
+            <td class="cmp-label">水位 3</td>
+            <td class="cmp-plant" id="cmpPlantWL3">OFF</td>
+            <td class="cmp-app" id="cmpAppWL3">OFF</td>
+            <td class="cmp-diff" id="cmpDiffWL3"></td>
+          </tr>
+          <tr>
+            <td class="cmp-label">水位 4</td>
+            <td class="cmp-plant" id="cmpPlantWL4">OFF</td>
+            <td class="cmp-app" id="cmpAppWL4">OFF</td>
+            <td class="cmp-diff" id="cmpDiffWL4"></td>
+          </tr>
+          <tr>
+            <td class="cmp-label">蓋</td>
+            <td class="cmp-plant" id="cmpPlantLid">閉</td>
+            <td class="cmp-app" id="cmpAppLid">閉</td>
+            <td class="cmp-diff" id="cmpDiffLid"></td>
+          </tr>
+          <tr>
+            <td class="cmp-label">ヒータ</td>
+            <td class="cmp-plant" id="cmpPlantHeater">OFF</td>
+            <td class="cmp-app" id="cmpAppHeater">OFF</td>
+            <td class="cmp-diff" id="cmpDiffHeater"></td>
+          </tr>
+          <tr>
+            <td class="cmp-label">デューティ</td>
+            <td class="cmp-plant" id="cmpPlantDuty">0%</td>
+            <td class="cmp-app" id="cmpAppDuty">0%</td>
+            <td class="cmp-diff" id="cmpDiffDuty"></td>
+          </tr>
+          <tr>
+            <td class="cmp-label">ポンプ</td>
+            <td class="cmp-plant" id="cmpPlantPump">OFF</td>
+            <td class="cmp-app" id="cmpAppPump">OFF</td>
+            <td class="cmp-diff" id="cmpDiffPump"></td>
+          </tr>
+          <tr>
+            <td class="cmp-label">電源</td>
+            <td class="cmp-plant" id="cmpPlantPower">ON</td>
+            <td class="cmp-app" id="cmpAppPower">ON</td>
+            <td class="cmp-diff" id="cmpDiffPower"></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="cmp-legend">
+        <span>状態:</span>
+        <span class="info-value" id="infoState">idle</span>
+        <span style="margin-left:12px;">モード:</span>
+        <span class="info-value" id="infoMode">high</span>
+        <span style="margin-left:12px;">タイマ:</span>
+        <span class="info-value" id="infoTimer">0分</span>
+        <span style="margin-left:12px;">エラー:</span>
+        <span class="info-value" id="infoError">なし</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 右パネル: テスト列 ===== -->
+  <div class="test-column">
+    <div class="card test-panel">
+      <h3>🧪 自動テスト</h3>
+      <!-- ファイル選択 -->
+      <div class="test-controls">
+        <select id="scenarioSelect">
+          <option value="">-- テストファイルを選択 --</option>
+        </select>
+        <button class="btn-test btn-test-load" onclick="loadSelectedScenario()">読込</button>
+      </div>
+      <!-- カスタムJSON -->
+      <div style="margin-bottom:6px;">
+        <button class="btn-test btn-test-toggle" onclick="toggleCustomJson()">カスタムJSON入力</button>
+      </div>
+      <div class="test-custom-area" id="customJsonArea">
+        <textarea id="customJsonInput" placeholder='{"scenarios":[{"name":"テスト名","setup":{},"steps":[...]}]}'></textarea>
+        <div style="margin-top:4px;">
+          <button class="btn-test btn-test-load" onclick="loadCustomScenario()">カスタム読込</button>
+        </div>
+      </div>
+      <!-- スイートステータス -->
+      <div class="suite-status-bar">
+        <span class="test-status-badge idle" id="suiteStatusBadge">未読込</span>
+        <span id="suiteStatusText"></span>
+      </div>
+      <!-- 実行コントロール -->
+      <div class="suite-controls">
+        <button class="btn-test btn-test-run" id="btnRunAll" onclick="runAllScenarios()" disabled>▶ 全件実行</button>
+        <button class="btn-test btn-test-run" id="btnRunSelected" onclick="runScenario()" disabled>▶ 選択実行</button>
+        <button class="btn-test btn-test-stop" onclick="stopScenario()">■ 停止</button>
+      </div>
+      <!-- テストケース一覧 -->
+      <div class="suite-list" id="suiteList"></div>
+    </div>
+
+    <!-- 選択中テストケース詳細 -->
+    <div class="card test-panel" id="testDetailCard" style="display:none;">
+      <h3 id="testDetailTitle">テストケース詳細</h3>
+      <div class="test-status" id="testStatusArea">
+        <span class="test-status-badge idle" id="testStatusBadge">—</span>
+        <span id="testElapsed"></span>
+      </div>
+      <div id="testScenarioInfo">
+        <div class="test-scenario-name" id="testScenarioName"></div>
+        <div class="test-scenario-desc" id="testScenarioDesc"></div>
+      </div>
+      <div class="test-results" id="testResults"></div>
+    </div>
+  </div>
+
+</div>
+
+<footer>話題沸騰ポット GOMA-1015型 シミュレーター — WebSocket リアルタイム表示</footer>
+
+<script>
+// ===== WebSocket 接続 =====
+let ws = null;
+let lidClosed = true;
+let currentState = null;
+
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws`);
+
+  ws.onopen = () => {
+    console.log('WebSocket connected');
+    // 初期速度を送信
+    const speed = document.getElementById('speedSelect').value;
+    send('set_speed', speed);
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'state') {
+      updateUI(msg.data);
+    }
+  };
+
+  ws.onclose = () => {
+    console.log('WebSocket disconnected, reconnecting in 2s...');
+    setTimeout(connect, 2000);
+  };
+
+  ws.onerror = () => ws.close();
+}
+
+function send(action, value) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ action, value }));
+  }
+}
+
+function setSpeed(v) {
+  send('set_speed', parseFloat(v));
+}
+
+function toggleLid() {
+  lidClosed = !lidClosed;
+  send(lidClosed ? 'lid_close' : 'lid_open');
+}
+
+function addWater() {
+  const val = parseInt(document.getElementById('waterAmount').value) || 600;
+  send('add_water', val);
+}
+
+// ===== UI更新 =====
+const stateLabels = {
+  idle: '待機中',
+  boiling: '沸騰中',
+  keep_warm: '保温中',
+  error: 'エラー'
+};
+
+const modeLabels = {
+  high: '高温 (98℃)',
+  economy: '節約 (90℃)',
+  milk: 'ミルク (60℃)'
+};
+
+function updateUI(s) {
+  currentState = s;
+
+  // 温度表示 (大きい数字はプラント実温度)
+  const plantTemp_ = s.plant ? s.plant.temperature : s.temperature;
+  document.getElementById('tempValue').textContent = plantTemp_.toFixed(1);
+  document.getElementById('targetTemp').textContent = s.target_temperature;
+
+  // アプリ認識温度 (サブ表示)
+  document.getElementById('tempApp').textContent = s.app ? s.app.temperature.toFixed(1) : s.temperature_display;
+
+  // 温度に応じた色 (プラント実温度で色を決定)
+  const tv = document.getElementById('tempValue');
+  const tc = tempToColor(s.plant ? s.plant.temperature : s.temperature);
+  tv.style.color = tc.light;
+
+  // 状態バッジ
+  const badge = document.getElementById('stateBadge');
+  badge.textContent = stateLabels[s.state] || s.state;
+  badge.className = 'state-badge state-' + s.state;
+
+  // ブザー
+  const buzzer = document.getElementById('buzzerIcon');
+  buzzer.className = s.buzzer_active ? 'buzzer-icon active' : 'buzzer-icon';
+
+  // ポット描画 — プラント実温度に応じて水の色を決定
+  const maxWater = 1000;
+  const maxH = 190; // px
+  const waterH = Math.min((s.water_volume_ml / maxWater) * maxH, maxH);
+  const potWater = document.getElementById('potWater');
+  potWater.style.height = waterH + 'px';
+  const plantTemp = s.plant ? s.plant.temperature : s.temperature;
+  const wc = tempToColor(plantTemp);
+  potWater.style.background = `linear-gradient(180deg, ${wc.light}, ${wc.dark})`;
+
+  // ヒーターバー
+  const hbar = document.getElementById('heaterBar');
+  hbar.className = 'heater-bar' + (s.heater_on && s.heater_duty > 0 ? ' active' : '');
+
+  // 蓋
+  lidClosed = s.lid_closed;
+  const lid = document.getElementById('potLid');
+  lid.className = 'pot-lid' + (s.lid_closed ? '' : ' open');
+  lid.textContent = s.lid_closed ? '蓋 (閉)' : '蓋 (開)';
+
+  // ランプ
+  setLamp('lampBoil', s.boiling_lamp, 'on-red');
+  setLamp('lampWarm', s.keep_warm_lamp, 'on-orange');
+  setLamp('lampLock', s.lock_lamp, 'on-green');
+  setLamp('lampPower', s.power_on, 'on-blue');
+  setLamp('lampPump', s.pump_on, 'on-blue');
+
+  // 水量表示
+  document.getElementById('waterVolume').textContent = Math.round(s.water_volume_ml);
+
+  // シミュレーション制御の状態反映
+  document.getElementById('btnStart').classList.toggle('active', s.running);
+  document.getElementById('btnStop').classList.toggle('active', !s.running);
+
+  // 経過時間
+  const totalSec = Math.floor(s.elapsed_time);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  document.getElementById('simTime').textContent = `経過: ${min}:${String(sec).padStart(2, '0')}`;
+
+  // ロックボタン表示
+  const btnLock = document.getElementById('btnLock');
+  btnLock.textContent = s.locked ? '🔓 ロック解除' : '🔓 ロック';
+
+  // プラント vs アプリ 比較テーブル
+  updateCompareTable(s);
+
+  // 状態・モード・タイマ・エラー
+  document.getElementById('infoState').textContent = stateLabels[s.state] || s.state;
+  document.getElementById('infoMode').textContent = modeLabels[s.keep_warm_mode] || s.keep_warm_mode;
+  document.getElementById('infoTimer').textContent = s.timer_display + '分';
+
+  let errorText = 'なし';
+  if (s.high_temp_error) errorText = '⚠ 高温エラー';
+  else if (s.temp_not_rising_error) errorText = '⚠ 温度上がらず';
+  document.getElementById('infoError').textContent = errorText;
+  document.getElementById('infoError').style.color = s.error ? '#e53935' : 'inherit';
+
+  // チャート更新
+  if (s.temp_history && s.temp_history.length > 0) {
+    drawChart(s.temp_history, s.target_temperature);
+  }
+
+  // 故障状態更新
+  updateFaultUI(s.faults);
+
+  // 自動テスト結果更新
+  updateSuiteUI(s.scenario);
+}
+
+function setLamp(id, on, cls) {
+  const el = document.getElementById(id);
+  el.className = 'lamp-dot' + (on ? ' ' + cls : '');
+}
+
+// ===== プラント vs アプリ 比較テーブル更新 =====
+function updateCompareTable(s) {
+  const p = s.plant;
+  const a = s.app;
+  if (!p || !a) return;
+
+  function setCmp(suffix, plantVal, appVal, fmt) {
+    const pText = fmt(plantVal);
+    const aText = fmt(appVal);
+    document.getElementById('cmpPlant' + suffix).textContent = pText;
+    document.getElementById('cmpApp' + suffix).textContent = aText;
+    const diffEl = document.getElementById('cmpDiff' + suffix);
+    if (pText !== aText) {
+      diffEl.textContent = '≠';
+      diffEl.className = 'cmp-diff mismatch';
+    } else {
+      diffEl.textContent = '';
+      diffEl.className = 'cmp-diff';
+    }
+  }
+
+  const fmtTemp = v => v.toFixed(1) + '℃';
+  const fmtBool = v => v ? 'ON' : 'OFF';
+  const fmtLid = v => v ? '閉' : '開';
+  const fmtDuty = v => Math.round(v) + '%';
+
+  setCmp('Temp', p.temperature, a.temperature, fmtTemp);
+  document.getElementById('cmpPlantVol').textContent = Math.round(s.water_volume_ml) + ' ml';
+  setCmp('WL1', p.water_level[0], a.water_level[0], fmtBool);
+  setCmp('WL2', p.water_level[1], a.water_level[1], fmtBool);
+  setCmp('WL3', p.water_level[2], a.water_level[2], fmtBool);
+  setCmp('WL4', p.water_level[3], a.water_level[3], fmtBool);
+  setCmp('Lid', p.lid_closed, a.lid_closed, fmtLid);
+  setCmp('Heater', p.heater_on, a.heater_active, fmtBool);
+  setCmp('Duty', p.heater_duty, a.heater_duty, fmtDuty);
+  setCmp('Pump', p.pump_on, a.pump_on, fmtBool);
+  setCmp('Power', p.power_on, a.power_on, fmtBool);
+}
+
+// 温度(0〜100℃)に応じた水の色を計算 (青→オレンジ)
+function tempToColor(temp) {
+  const t = Math.max(0, Math.min(temp, 100)) / 100; // 0..1
+  // 青(79,195,247) → オレンジ(255,112,67)
+  const r1 = 79, g1 = 195, b1 = 247;
+  const r2 = 255, g2 = 112, b2 = 67;
+  const r = Math.round(r1 + (r2 - r1) * t);
+  const g = Math.round(g1 + (g2 - g1) * t);
+  const b = Math.round(b1 + (b2 - b1) * t);
+  // dark版は明度を下げる
+  const rd = Math.round(r * 0.6);
+  const gd = Math.round(g * 0.6);
+  const bd = Math.round(b * 0.6);
+  return {
+    light: `rgb(${r},${g},${b})`,
+    dark: `rgb(${rd},${gd},${bd})`
+  };
+}
+
+// ===== 温度チャート (Canvas) =====
+function drawChart(data, target) {
+  const canvas = document.getElementById('tempChart');
+  const ctx = canvas.getContext('2d');
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * window.devicePixelRatio;
+  canvas.height = rect.height * window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  const W = rect.width;
+  const H = rect.height;
+
+  // 背景
+  ctx.fillStyle = '#fafafa';
+  ctx.fillRect(0, 0, W, H);
+
+  const pad = { top: 20, right: 16, bottom: 28, left: 44 };
+  const cw = W - pad.left - pad.right;
+  const ch = H - pad.top - pad.bottom;
+
+  // 温度範囲
+  const minT = 0;
+  const maxT = 120;
+
+  function yOf(temp) {
+    return pad.top + ch * (1 - (temp - minT) / (maxT - minT));
+  }
+  function xOf(i) {
+    return pad.left + (i / (data.length - 1 || 1)) * cw;
+  }
+
+  // グリッド
+  ctx.strokeStyle = '#e0e0e0';
+  ctx.lineWidth = 1;
+  ctx.font = '10px sans-serif';
+  ctx.fillStyle = '#999';
+  for (let t = 0; t <= 120; t += 20) {
+    const y = yOf(t);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(W - pad.right, y);
+    ctx.stroke();
+    ctx.fillText(t + '℃', 4, y + 3);
+  }
+
+  // 目標温度ライン
+  if (target > 0) {
+    ctx.strokeStyle = 'rgba(230, 81, 0, 0.6)';
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, yOf(target));
+    ctx.lineTo(W - pad.right, yOf(target));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#e65100';
+    ctx.fillText('目標 ' + target + '℃', pad.left + 4, yOf(target) - 4);
+  }
+
+  // 温度曲線 (プラント実値 — 青)
+  if (data.length > 1) {
+    ctx.strokeStyle = '#0277bd';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(xOf(0), yOf(data[0].temp));
+    for (let i = 1; i < data.length; i++) {
+      ctx.lineTo(xOf(i), yOf(data[i].temp));
+    }
+    ctx.stroke();
+
+    // グラデーション塗り
+    const grad = ctx.createLinearGradient(0, yOf(maxT), 0, yOf(minT));
+    grad.addColorStop(0, 'rgba(2, 119, 189, 0.18)');
+    grad.addColorStop(1, 'rgba(2, 119, 189, 0.02)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(xOf(0), yOf(data[0].temp));
+    for (let i = 1; i < data.length; i++) {
+      ctx.lineTo(xOf(i), yOf(data[i].temp));
+    }
+    ctx.lineTo(xOf(data.length - 1), yOf(minT));
+    ctx.lineTo(xOf(0), yOf(minT));
+    ctx.closePath();
+    ctx.fill();
+
+    // アプリ認識温度曲線 (紫・破線)
+    const hasAppTemp = data[0].app_temp !== undefined;
+    if (hasAppTemp) {
+      ctx.strokeStyle = '#9c27b0';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(xOf(0), yOf(data[0].app_temp));
+      for (let i = 1; i < data.length; i++) {
+        ctx.lineTo(xOf(i), yOf(data[i].app_temp));
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // 凡例
+  const legendY = pad.top + 2;
+  ctx.font = '10px sans-serif';
+  // プラント
+  ctx.strokeStyle = '#0277bd';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(W - pad.right - 140, legendY); ctx.lineTo(W - pad.right - 124, legendY); ctx.stroke();
+  ctx.fillStyle = '#0277bd';
+  ctx.fillText('実温度', W - pad.right - 120, legendY + 3);
+  // アプリ
+  ctx.strokeStyle = '#9c27b0';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath(); ctx.moveTo(W - pad.right - 68, legendY); ctx.lineTo(W - pad.right - 52, legendY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#9c27b0';
+  ctx.fillText('認識温度', W - pad.right - 48, legendY + 3);
+
+  // 時間ラベル
+  ctx.fillStyle = '#556';
+  if (data.length > 1) {
+    const startT = data[0].t;
+    const endT = data[data.length - 1].t;
+    ctx.fillStyle = '#999';
+    ctx.fillText(formatSec(startT), pad.left, H - 4);
+    ctx.fillText(formatSec(endT), W - pad.right - 30, H - 4);
+    const midI = Math.floor(data.length / 2);
+    ctx.fillText(formatSec(data[midI].t), xOf(midI) - 10, H - 4);
+  }
+}
+
+function formatSec(s) {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return m + ':' + String(sec).padStart(2, '0');
+}
+
+// ===== 蓋クリック =====
+document.getElementById('potLid').addEventListener('click', toggleLid);
+
+// ===== 故障注入 =====
+function injectFault(target, mode) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ action: 'inject_fault', target: target, mode: mode }));
+  }
+}
+
+function clearAllFaults() {
+  send('clear_all_faults');
+  // UIのセレクトもリセット
+  document.querySelectorAll('.fault-select').forEach(sel => {
+    sel.value = 'normal';
+    sel.classList.remove('fault-active');
+  });
+}
+
+function updateFaultUI(faults) {
+  if (!faults) return;
+  let activeCount = 0;
+  const faultIds = {
+    'thermistor': 'fault_thermistor',
+    'water_level_1': 'fault_water_level_1',
+    'water_level_2': 'fault_water_level_2',
+    'water_level_3': 'fault_water_level_3',
+    'water_level_4': 'fault_water_level_4',
+    'full_water': 'fault_full_water',
+    'lid_sensor': 'fault_lid_sensor',
+    'heater': 'fault_heater',
+    'pump': 'fault_pump',
+    'power_supply': 'fault_power_supply',
+  };
+  for (const [key, elId] of Object.entries(faultIds)) {
+    const el = document.getElementById(elId);
+    if (el && faults[key]) {
+      el.value = faults[key];
+      if (faults[key] !== 'normal') {
+        el.classList.add('fault-active');
+        activeCount++;
+      } else {
+        el.classList.remove('fault-active');
+      }
+    }
+  }
+  const countEl = document.getElementById('faultActiveCount');
+  countEl.textContent = activeCount > 0 ? `⚠ ${activeCount} 件の故障が注入されています` : '';
+}
+
+// ===== 自動テスト =====
+let suiteLoaded = false;
+let selectedScenarioIndex = 0;
+
+async function fetchScenarios() {
+  try {
+    const resp = await fetch('/api/scenarios');
+    const list = await resp.json();
+    const sel = document.getElementById('scenarioSelect');
+    sel.innerHTML = '<option value="">-- テストファイルを選択 --</option>';
+    list.forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = f.file;
+      opt.textContent = `${f.name} (${f.count}件)`;
+      sel.appendChild(opt);
+    });
+  } catch (e) {
+    console.error('Failed to fetch scenarios', e);
+  }
+}
+
+function loadSelectedScenario() {
+  const sel = document.getElementById('scenarioSelect');
+  const file = sel.value;
+  if (!file) return;
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ action: 'load_scenario_file', name: file }));
+    suiteLoaded = true;
+    document.getElementById('btnRunAll').disabled = false;
+    document.getElementById('btnRunSelected').disabled = false;
+  }
+}
+
+function loadCustomScenario() {
+  const txt = document.getElementById('customJsonInput').value.trim();
+  if (!txt) return;
+  try {
+    const data = JSON.parse(txt);
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ action: 'load_scenario', scenario: data }));
+      suiteLoaded = true;
+      document.getElementById('btnRunAll').disabled = false;
+      document.getElementById('btnRunSelected').disabled = false;
+    }
+  } catch (e) {
+    alert('JSONの解析に失敗しました: ' + e.message);
+  }
+}
+
+function selectScenario(index) {
+  selectedScenarioIndex = index;
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ action: 'select_scenario', index: index }));
+  }
+  // 一覧のアクティブ状態を更新
+  document.querySelectorAll('.suite-item').forEach((el, i) => {
+    el.classList.toggle('active', i === index);
+  });
+}
+
+function runScenario() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ action: 'run_scenario' }));
+  }
+}
+
+function runAllScenarios() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ action: 'run_all_scenarios' }));
+  }
+}
+
+function stopScenario() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ action: 'stop_scenario' }));
+  }
+}
+
+function toggleCustomJson() {
+  document.getElementById('customJsonArea').classList.toggle('open');
+}
+
+const suiteStatusLabels = {
+  idle:    '未読込',
+  loaded:  '読込済',
+  running: '実行中',
+  passed:  '全件合格',
+  failed:  '不合格あり',
+  done:    '完了',
+  stopped: '停止',
+};
+
+const stepStatusIcons = {
+  passed:  '✓',
+  failed:  '✗',
+  pending: '·',
+  waiting: '⏳',
+  skipped: '—',
+};
+
+const scenarioStatusLabels = {
+  loaded:  '読込済',
+  running: '実行中',
+  passed:  '合格',
+  failed:  '不合格',
+  stopped: '停止',
+  timeout: 'タイムアウト',
+  pending: '未実行',
+};
+
+function updateSuiteUI(suite) {
+  if (!suite) {
+    document.getElementById('suiteStatusBadge').textContent = '未読込';
+    document.getElementById('suiteStatusBadge').className = 'test-status-badge idle';
+    document.getElementById('suiteStatusText').textContent = '';
+    document.getElementById('suiteList').innerHTML = '';
+    document.getElementById('testDetailCard').style.display = 'none';
+    return;
+  }
+
+  // スイートステータス
+  const suiteBadge = document.getElementById('suiteStatusBadge');
+  const suiteStatus = suite.suite_status || 'idle';
+  suiteBadge.textContent = suiteStatusLabels[suiteStatus] || suiteStatus;
+  suiteBadge.className = 'test-status-badge ' + suiteStatus;
+
+  const scenarios = suite.scenarios || [];
+  const passedCount = scenarios.filter(s => s.status === 'passed').length;
+  document.getElementById('suiteStatusText').textContent =
+    scenarios.length > 0 ? `${passedCount}/${scenarios.length} 合格` : '';
+
+  // テストケース一覧
+  const listEl = document.getElementById('suiteList');
+  const currentIndex = suite.current_index >= 0 ? suite.current_index : selectedScenarioIndex;
+
+  if (listEl.children.length !== scenarios.length) {
+    // DOMを再構築
+    listEl.innerHTML = '';
+    scenarios.forEach((sc, idx) => {
+      const div = document.createElement('div');
+      div.className = 'suite-item' + (idx === currentIndex ? ' active' : '');
+      div.onclick = () => selectScenario(idx);
+      div.innerHTML = buildSuiteItemHTML(sc, idx);
+      listEl.appendChild(div);
+    });
+  } else {
+    scenarios.forEach((sc, idx) => {
+      const div = listEl.children[idx];
+      div.className = 'suite-item' + (idx === currentIndex ? ' active' : '');
+      div.innerHTML = buildSuiteItemHTML(sc, idx);
+      div.onclick = () => selectScenario(idx);
+    });
+  }
+
+  // 選択中テストケースの詳細
+  const current = suite.current;
+  const detailCard = document.getElementById('testDetailCard');
+  if (current) {
+    detailCard.style.display = '';
+    updateScenarioDetail(current);
+  } else if (scenarios.length > 0) {
+    detailCard.style.display = '';
+    // 選択中シナリオの基本情報だけ表示
+    const sc = scenarios[currentIndex] || scenarios[0];
+    document.getElementById('testScenarioName').textContent = sc.name || '';
+    document.getElementById('testScenarioDesc').textContent = sc.description || '';
+    document.getElementById('testStatusBadge').textContent = scenarioStatusLabels[sc.status] || sc.status || '—';
+    document.getElementById('testStatusBadge').className = 'test-status-badge ' + (sc.status || 'idle');
+    document.getElementById('testElapsed').textContent = '';
+    document.getElementById('testResults').innerHTML = '';
+  } else {
+    detailCard.style.display = 'none';
+  }
+}
+
+function buildSuiteItemHTML(sc, idx) {
+  const status = sc.status || 'pending';
+  const badgeLabel = scenarioStatusLabels[status] || status;
+  return `<span class="suite-item-index">${idx + 1}</span>
+    <span class="suite-item-name" title="${escHTML(sc.name)}">${escHTML(sc.name)}</span>
+    <span class="suite-item-badge ${status}">${badgeLabel}</span>`;
+}
+
+function updateScenarioDetail(scenario) {
+  // Status badge
+  const badge = document.getElementById('testStatusBadge');
+  badge.textContent = scenarioStatusLabels[scenario.status] || scenario.status;
+  badge.className = 'test-status-badge ' + scenario.status;
+
+  // Elapsed time
+  const elapsed = scenario.elapsed_time || 0;
+  const min = Math.floor(elapsed / 60);
+  const sec = Math.floor(elapsed % 60);
+  document.getElementById('testElapsed').textContent = `${min}:${String(sec).padStart(2, '0')}`;
+
+  // Scenario info
+  document.getElementById('testScenarioName').textContent = scenario.name;
+  document.getElementById('testScenarioDesc').textContent = scenario.description || '';
+
+  // Steps
+  const container = document.getElementById('testResults');
+  const steps = scenario.steps || [];
+
+  if (container.children.length !== steps.length) {
+    container.innerHTML = '';
+    steps.forEach((step, idx) => {
+      const div = document.createElement('div');
+      div.className = 'test-step';
+      div.id = 'testStep' + idx;
+      div.innerHTML = buildStepHTML(step, idx);
+      div.querySelector('.test-step-header').addEventListener('click', () => {
+        div.classList.toggle('expanded');
+      });
+      container.appendChild(div);
+    });
+  } else {
+    steps.forEach((step, idx) => {
+      const div = document.getElementById('testStep' + idx);
+      if (div) {
+        const wasExpanded = div.classList.contains('expanded');
+        div.innerHTML = buildStepHTML(step, idx);
+        if (wasExpanded) div.classList.add('expanded');
+        div.querySelector('.test-step-header').addEventListener('click', () => {
+          div.classList.toggle('expanded');
+        });
+      }
+    });
+  }
+}
+
+function buildStepHTML(step, idx) {
+  const status = step.status || 'pending';
+  const icon = stepStatusIcons[status] || '?';
+  const time = step.triggered_at !== null && step.triggered_at !== undefined
+    ? formatSec(step.triggered_at)
+    : '';
+  const assertions = step.assertions || [];
+  let detailHTML = '';
+  if (assertions.length > 0) {
+    detailHTML = assertions.map(a => {
+      const ok = a.passed;
+      const iconCls = ok ? 'pass' : 'fail';
+      const iconStr = ok ? '✓' : '✗';
+      const detail = `${a.field} ${a.op} ${JSON.stringify(a.expected)} → ${JSON.stringify(a.actual)}`;
+      const msg = a.message ? `<div class="test-assertion-msg">${escHTML(a.message)}</div>` : '';
+      return `<div class="test-assertion">
+        <span class="test-assertion-icon ${iconCls}">${iconStr}</span>
+        <div>
+          <div class="test-assertion-detail">${escHTML(detail)}</div>
+          ${msg}
+        </div>
+      </div>`;
+    }).join('');
+  } else {
+    detailHTML = '<div style="color:#999;font-size:0.72rem;">アサーションなし</div>';
+  }
+
+  return `<div class="test-step-header">
+      <div class="test-step-icon ${status}">${icon}</div>
+      <div class="test-step-desc">${idx + 1}. ${escHTML(step.description)}</div>
+      <div class="test-step-time">${time}</div>
+    </div>
+    <div class="test-step-details">${detailHTML}</div>`;
+}
+
+function escHTML(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ===== 初期化 =====
+connect();
+fetchScenarios();
+</script>
+</body>
+</html>

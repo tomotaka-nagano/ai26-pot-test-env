@@ -1,0 +1,1 @@
+"""MCP server for the pot simulation test environment."""

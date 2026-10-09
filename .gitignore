@@ -1,0 +1,11 @@
+# this app.
+
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Runtime data and generated native artifacts
+.data/
